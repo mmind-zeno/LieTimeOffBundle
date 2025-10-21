@@ -1,0 +1,206 @@
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="ti ti-users-cog me-2"></i>
+                    Arbeitszeit-Einstellungen pro Mitarbeiter
+                </h3>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Mitarbeiter</th>
+                            <th>Employment Type</th>
+                            <th>Arbeitszeit %</th>
+                            <th>Kimai-Tracking</th>
+                            <th>Policy</th>
+                            <th>Status</th>
+                            <th class="w-1">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        {% set settings = settingsByUser[user.id] ?? null %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="avatar avatar-sm me-2">{{ user.displayName|slice(0, 2)|upper }}</span>
+                                    <strong>{{ user.displayName }}</strong>
+                                </div>
+                            </td>
+                            <td>
+                                {% if settings %}
+                                    {% if settings.employmentType == "fulltime" %}
+                                        <span class="badge bg-blue">Vollzeit</span>
+                                    {% elseif settings.employmentType == "parttime" %}
+                                        <span class="badge bg-yellow">Teilzeit</span>
+                                    {% elseif settings.employmentType == "hourly" %}
+                                        <span class="badge bg-purple">Stundenbasis</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Nicht konfiguriert</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if settings %}
+                                    {{ settings.workingTimePercentage|number_format(0) }}%
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if settings and settings.useKimaiTimeTracking %}
+                                    <span class="badge bg-success">Aktiv</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inaktiv</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if settings and settings.policy %}
+                                    {{ settings.policy.name }}
+                                {% else %}
+                                    <span class="text-muted">Standard</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if settings %}
+                                    <span class="badge bg-success">Konfiguriert</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Fehlend</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-icon btn-primary" 
+                                        onclick="editUserSettings({{ user.id }}, '{{ user.displayName|e("js") }}', {{ settings ? settings.id : null }}, '{{ settings ? settings.employmentType : "fulltime" }}', {{ settings ? settings.workingTimePercentage : 100 }}, {{ settings ? (settings.useKimaiTimeTracking ? 1 : 0) : 0 }}, {{ settings and settings.policy ? settings.policy.id : null }})">
+                                    <i class="ti ti-edit"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h3 class="card-title">
+                    <i class="ti ti-info-circle me-2"></i>
+                    Employment Types
+                </h3>
+                <dl class="mb-0">
+                    <dt><span class="badge bg-blue">Vollzeit</span></dt>
+                    <dd class="mb-2">Fixe Urlaubstage aus Policy (z.B. 25 Tage)</dd>
+                    
+                    <dt><span class="badge bg-yellow">Teilzeit</span></dt>
+                    <dd class="mb-2">Prozentual berechnet (z.B. 60% = 15 Tage)</dd>
+                    
+                    <dt><span class="badge bg-purple">Stundenbasis</span></dt>
+                    <dd class="mb-0">Automatisch aus Kimai-Stunden berechnet<br>
+                    <small class="text-muted">Formel: (Stunden ÷ 2080) × 25 Tage</small></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="editUserSettingsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ path("timeoff_admin_user_settings_save") }}">
+                <input type="hidden" name="_token" value="{{ csrf_token("user_settings") }}">
+                <input type="hidden" name="user_id" id="editUserId">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title">Einstellungen: <span id="editUserName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label required">Employment Type</label>
+                        <select name="employment_type" id="editEmploymentType" class="form-select" onchange="toggleUserFields()">
+                            <option value="fulltime">Vollzeit (100%)</option>
+                            <option value="parttime">Teilzeit (Prozentual)</option>
+                            <option value="hourly">Stundenbasis (Kimai-Tracking)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="percentageField">
+                        <label class="form-label">Arbeitszeit-Prozentsatz</label>
+                        <div class="input-group">
+                            <input type="number" name="working_time_percentage" id="editPercentage" class="form-control" min="1" max="100" step="0.5" value="100">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="trackingField">
+                        <label class="form-check form-switch">
+                            <input type="checkbox" name="use_kimai_tracking" id="editTracking" class="form-check-input" value="1">
+                            <span class="form-check-label">Kimai-Zeiterfassung nutzen</span>
+                        </label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Urlaubsrichtlinie</label>
+                        <select name="policy_id" id="editPolicyId" class="form-select">
+                            <option value="">Standard-Policy verwenden</option>
+                            {% for policy in policies %}
+                                <option value="{{ policy.id }}">{{ policy.name }} ({{ policy.annualDays }} Tage)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editUserSettings(userId, userName, settingsId, employmentType, percentage, tracking, policyId) {
+    document.getElementById("editUserId").value = userId;
+    document.getElementById("editUserName").textContent = userName;
+    document.getElementById("editEmploymentType").value = employmentType;
+    document.getElementById("editPercentage").value = percentage;
+    document.getElementById("editTracking").checked = tracking == 1;
+    document.getElementById("editPolicyId").value = policyId || "";
+    
+    toggleUserFields();
+    
+    const modal = new bootstrap.Modal(document.getElementById("editUserSettingsModal"));
+    modal.show();
+}
+
+function toggleUserFields() {
+    const type = document.getElementById("editEmploymentType").value;
+    const percentageField = document.getElementById("percentageField");
+    const trackingField = document.getElementById("trackingField");
+    
+    if (type === "parttime") {
+        percentageField.style.display = "block";
+        trackingField.style.display = "none";
+        document.getElementById("editTracking").checked = false;
+    } else if (type === "hourly") {
+        percentageField.style.display = "none";
+        trackingField.style.display = "block";
+        document.getElementById("editTracking").checked = true;
+    } else {
+        percentageField.style.display = "none";
+        trackingField.style.display = "none";
+        document.getElementById("editTracking").checked = false;
+        document.getElementById("editPercentage").value = 100;
+    }
+}
+</script>

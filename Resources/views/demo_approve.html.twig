@@ -1,0 +1,431 @@
+{% extends "@theme/layout.html.twig" %}
+
+{% block page_title %}Urlaubsanträge genehmigen{% endblock %}
+
+{% block page_content %}
+<div class="container-xl">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-tasks me-2"></i>
+                        Offene Urlaubsanträge
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Hier sehen Sie alle offenen Urlaubsanträge Ihrer Mitarbeiter.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Statistik -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="filterStatus">
+                                <option value="all">Alle Anträge</option>
+                                <option value="pending" selected>⏳ Ausstehend</option>
+                                <option value="approved">✅ Genehmigt</option>
+                                <option value="rejected">❌ Abgelehnt</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Mitarbeiter</label>
+                            <select class="form-select" id="filterEmployee">
+                                <option value="all">Alle Mitarbeiter</option>
+                                <option value="1">Max Mustermann</option>
+                                <option value="2">Anna Schmidt</option>
+                                <option value="3">Peter Weber</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Zeitraum</label>
+                            <select class="form-select" id="filterPeriod">
+                                <option value="current" selected>Aktuelles Jahr</option>
+                                <option value="next">Nächste 3 Monate</option>
+                                <option value="all">Alle Zeiträume</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-clock fa-3x"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0">7</h3>
+                            <small>Offene Anträge</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Antragsliste -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-list me-2"></i>
+                        Antragsliste
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Mitarbeiter</th>
+                                <th>Art</th>
+                                <th>Von</th>
+                                <th>Bis</th>
+                                <th>Tage</th>
+                                <th>Status</th>
+                                <th>Eingereicht</th>
+                                <th class="w-1">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestTable">
+                            <!-- Demo-Daten -->
+                            <tr class="request-row" data-status="pending">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar avatar-sm me-2">MM</span>
+                                        <div>
+                                            <strong>Max Mustermann</strong><br>
+                                            <small class="text-muted">max.mustermann@firma.li</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-blue">
+                                        <i class="fas fa-umbrella-beach me-1"></i>
+                                        Urlaub
+                                    </span>
+                                </td>
+                                <td>24.10.2025</td>
+                                <td>28.10.2025</td>
+                                <td><strong>5</strong></td>
+                                <td>
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Ausstehend
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">vor 2 Stunden</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-success" onclick="approveRequest(1)" title="Genehmigen">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="btn btn-danger" onclick="rejectRequest(1)" title="Ablehnen">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        <button class="btn btn-info" onclick="viewDetails(1)" title="Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <tr class="request-row" data-status="pending">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar avatar-sm me-2 bg-pink">AS</span>
+                                        <div>
+                                            <strong>Anna Schmidt</strong><br>
+                                            <small class="text-muted">anna.schmidt@firma.li</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-red">
+                                        <i class="fas fa-heartbeat me-1"></i>
+                                        Krankheit
+                                    </span>
+                                </td>
+                                <td>09.10.2025</td>
+                                <td>11.10.2025</td>
+                                <td><strong>3</strong></td>
+                                <td>
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Ausstehend
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">vor 1 Tag</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-success" onclick="approveRequest(2)">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="btn btn-danger" onclick="rejectRequest(2)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        <button class="btn btn-info" onclick="viewDetails(2)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr class="request-row" data-status="approved">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar avatar-sm me-2 bg-green">PW</span>
+                                        <div>
+                                            <strong>Peter Weber</strong><br>
+                                            <small class="text-muted">peter.weber@firma.li</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-blue">
+                                        <i class="fas fa-umbrella-beach me-1"></i>
+                                        Urlaub
+                                    </span>
+                                </td>
+                                <td>15.11.2025</td>
+                                <td>22.11.2025</td>
+                                <td><strong>6</strong></td>
+                                <td>
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>
+                                        Genehmigt
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">vor 3 Tagen</small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="viewDetails(3)">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-bolt me-2"></i>
+                        Schnellaktionen
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <button class="btn btn-success w-100" onclick="approveAll()">
+                                <i class="fas fa-check-double me-2"></i>
+                                Alle genehmigen
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary w-100" onclick="exportToExcel()">
+                                <i class="fas fa-file-excel me-2"></i>
+                                Als Excel exportieren
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-info w-100" onclick="showCalendar()">
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                Kalenderansicht
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-secondary w-100" onclick="sendReminder()">
+                                <i class="fas fa-bell me-2"></i>
+                                Erinnerung senden
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Antragsdetails
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalContent">
+                <!-- Wird dynamisch gefüllt -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                <button type="button" class="btn btn-danger" onclick="rejectFromModal()">
+                    <i class="fas fa-times me-2"></i>Ablehnen
+                </button>
+                <button type="button" class="btn btn-success" onclick="approveFromModal()">
+                    <i class="fas fa-check me-2"></i>Genehmigen
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Demo-Daten für Details
+const requests = {
+    1: {
+        id: 1,
+        employee: "Max Mustermann",
+        type: "Urlaub",
+        start: "24.10.2025",
+        end: "28.10.2025",
+        days: 5,
+        comment: "Familienurlaub in den Alpen",
+        remainingDays: 20,
+        submittedDate: "09.10.2025 14:30"
+    },
+    2: {
+        id: 2,
+        employee: "Anna Schmidt",
+        type: "Krankheit",
+        start: "09.10.2025",
+        end: "11.10.2025",
+        days: 3,
+        comment: "Grippe, Arztzeugnis liegt vor",
+        remainingDays: 25,
+        submittedDate: "08.10.2025 08:15"
+    },
+    3: {
+        id: 3,
+        employee: "Peter Weber",
+        type: "Urlaub",
+        start: "15.11.2025",
+        end: "22.11.2025",
+        days: 6,
+        comment: "Städtetrip Barcelona",
+        remainingDays: 19,
+        submittedDate: "06.10.2025 16:45"
+    }
+};
+
+function viewDetails(id) {
+    const request = requests[id];
+    const modal = new bootstrap.Modal(document.getElementById("detailsModal"));
+    
+    document.getElementById("modalContent").innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Mitarbeiter</h6>
+                <p>${request.employee}</p>
+                
+                <h6>Art</h6>
+                <p><span class="badge bg-blue">${request.type}</span></p>
+                
+                <h6>Zeitraum</h6>
+                <p>${request.start} bis ${request.end}</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Anzahl Tage</h6>
+                <p><strong>${request.days}</strong> Arbeitstage</p>
+                
+                <h6>Verbleibender Saldo</h6>
+                <p>${request.remainingDays} Tage</p>
+                
+                <h6>Eingereicht am</h6>
+                <p>${request.submittedDate}</p>
+            </div>
+            <div class="col-12">
+                <h6>Bemerkung</h6>
+                <p class="text-muted">${request.comment}</p>
+            </div>
+        </div>
+    `;
+    
+    modal.show();
+}
+
+function approveRequest(id) {
+    if (confirm("Möchten Sie diesen Antrag wirklich genehmigen?")) {
+        alert("✅ Antrag wurde genehmigt!\n\n(In der finalen Version wird dies in der Datenbank gespeichert und eine E-Mail versendet.)");
+    }
+}
+
+function rejectRequest(id) {
+    const reason = prompt("Grund für Ablehnung (optional):");
+    if (reason !== null) {
+        alert("❌ Antrag wurde abgelehnt!\n\nGrund: " + (reason || "Kein Grund angegeben") + "\n\n(In der finalen Version wird dies gespeichert und eine E-Mail versendet.)");
+    }
+}
+
+function approveFromModal() {
+    alert("✅ Antrag genehmigt!");
+    bootstrap.Modal.getInstance(document.getElementById("detailsModal")).hide();
+}
+
+function rejectFromModal() {
+    const reason = prompt("Grund für Ablehnung:");
+    if (reason) {
+        alert("❌ Antrag abgelehnt: " + reason);
+        bootstrap.Modal.getInstance(document.getElementById("detailsModal")).hide();
+    }
+}
+
+function approveAll() {
+    if (confirm("Möchten Sie wirklich ALLE ausstehenden Anträge genehmigen?")) {
+        alert("✅ 2 Anträge wurden genehmigt!");
+    }
+}
+
+function exportToExcel() {
+    alert("📊 Excel-Export wird vorbereitet...\n\n(Feature wird in zukünftiger Version implementiert)");
+}
+
+function showCalendar() {
+    alert("📅 Kalenderansicht wird geladen...\n\n(Feature wird in zukünftiger Version implementiert)");
+}
+
+function sendReminder() {
+    alert("🔔 Erinnerungen werden versendet...\n\n(Feature wird in zukünftiger Version implementiert)");
+}
+
+// Filter-Funktionalität
+document.getElementById("filterStatus")?.addEventListener("change", function() {
+    const status = this.value;
+    document.querySelectorAll(".request-row").forEach(row => {
+        if (status === "all" || row.dataset.status === status) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1065 @@
+{% extends "@theme/layout-horizontal.html.twig" %}
+
+{% block page_title %}Urlaubsverwaltung - Administration{% endblock %}
+
+{% block page_content %}
+<div class="container-xl">
+    {# Flash Messages #}
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label == "error" ? "danger" : (label == "warning" ? "warning" : "success") }} alert-dismissible fade show mb-3" role="alert">
+                <i class="ti ti-{{ label == "error" ? "alert-circle" : (label == "warning" ? "alert-triangle" : "check") }} me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- Header mit Tabs -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#policies" role="tab">
+                                <i class="ti ti-settings me-2"></i>
+                                Urlaubsrichtlinien
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#employees" role="tab">
+                                <i class="ti ti-users me-2"></i>
+                                Mitarbeitersalden
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#holidays" role="tab">
+                                <i class="ti ti-star me-2"></i>
+                                Feiertage
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#reports" role="tab">
+                                <i class="ti ti-chart-bar me-2"></i>
+                                Berichte
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#settings" role="tab">
+                                <i class="ti ti-tool me-2"></i>
+                                Einstellungen
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        
+        <!-- Tab 1: Urlaubsrichtlinien -->
+        <div class="tab-pane fade show active" id="policies" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                                <i class="ti ti-file-text me-2"></i>
+                                Aktive Urlaubsrichtlinien
+                            </h3>
+                            <div class="card-actions">
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPolicyModal">
+                                    <i class="ti ti-plus me-1"></i>
+                                    Neue Richtlinie
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>Richtlinie</th>
+                                        <th>Urlaubstage/Jahr</th>
+                                        <th>Übertrag max.</th>
+                                        <th>Standard</th>
+                                        <th>Status</th>
+                                        <th class="w-1">Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if policies|length > 0 %}
+                                        {% for policy in policies %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ policy.name }}</strong><br>
+                                                <small class="text-muted">{{ policy.description|default("Keine Beschreibung") }}</small>
+                                            </td>
+                                            <td><span class="badge bg-blue">{{ policy.annualDays|number_format(1, ",", ".") }} Tage</span></td>
+                                            <td>{{ policy.maxCarryover|number_format(1, ",", ".") }} Tage</td>
+                                            <td>
+                                                {% if policy.isDefault %}
+                                                    <span class="badge bg-green">Standard</span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if policy.isActive %}
+                                                    <span class="badge bg-success">Aktiv</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inaktiv</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-icon btn-primary" 
+                                                        data-policy-id="{{ policy.id }}"
+                                                        data-policy-name="{{ policy.name|e("html_attr") }}"
+                                                        data-policy-description="{{ policy.description|default("")|e("html_attr") }}"
+                                                        data-policy-annual="{{ policy.annualDays }}"
+                                                        data-policy-carryover="{{ policy.maxCarryover }}"
+                                                        data-policy-default="{{ policy.isDefault ? "1" : "0" }}"
+                                                        onclick="editPolicy(this)">
+                                                    <i class="ti ti-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                Keine Urlaubsrichtlinien vorhanden.
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                                <i class="ti ti-info-circle me-2"></i>
+                                LI-Rechtsgrundlagen
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <h6>Gesetzliche Anforderungen:</h6>
+                            <ul class="mb-3">
+                                <li>Min. 4 Wochen (20 Tage) pro Jahr</li>
+                                <li>Jugendliche: 5 Wochen (25 Tage)</li>
+                                <li>Übertrag bis 31. März des Folgejahres</li>
+                                <li>Max. Übertrag: 5 Tage (empfohlen)</li>
+                            </ul>
+                            
+                            <div class="alert alert-info mb-0">
+                                <i class="ti ti-bulb me-2"></i>
+                                <small>
+                                    <strong>Tipp:</strong> Bei Teilzeit den Anspruch 
+                                    proportional berechnen (z.B. 50% = 12.5 Tage).
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-header bg-warning text-white">
+                            <h3 class="card-title mb-0">
+                                <i class="ti ti-alert-triangle me-2"></i>
+                                Verfallwarnung
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Demo:</strong> Resturlaub-Verwaltung</p>
+                            <small class="text-muted d-block mt-2">
+                                ⚠️ Verfällt am 31. März 2026
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Mitarbeitersalden -->
+        <div class="tab-pane fade" id="employees" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                                <i class="ti ti-users me-2"></i>
+                                Urlaubssalden aller Mitarbeiter
+                            </h3>
+                            <div class="card-actions">
+                                <button class="btn btn-primary btn-sm" onclick="exportBalances()">
+                                    <i class="ti ti-download me-1"></i>
+                                    Exportieren
+                                </button>
+                                <button class="btn btn-success btn-sm" onclick="adjustBalance()">
+                                    <i class="ti ti-calculator me-1"></i>
+                                    Saldo anpassen
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Mitarbeiter</th>
+                                        <th>Anspruch {{ currentYear }}</th>
+                                        <th>Genommen</th>
+                                        <th>Genehmigt</th>
+                                        <th>Verfügbar</th>
+                                        <th>Übertrag {{ currentYear - 1 }}</th>
+                                        <th>Status</th>
+                                        <th class="w-1">Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if balances|length > 0 %}
+                                        {% for balance in balances %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="avatar avatar-sm me-2">{{ balance.user.displayName|slice(0, 2)|upper }}</span>
+                                                    <strong>{{ balance.user.displayName }}</strong>
+                                                </div>
+                                            </td>
+                                            <td>{{ balance.annualEntitlement|number_format(1, ",", ".") }}</td>
+                                            <td>{{ balance.taken|number_format(1, ",", ".") }}</td>
+                                            <td>{{ balance.approved|number_format(1, ",", ".") }}</td>
+                                            <td><strong class="{% if balance.available > 10 %}text-success{% elseif balance.available > 5 %}text-warning{% else %}text-danger{% endif %}">{{ balance.available|number_format(1, ",", ".") }}</strong></td>
+                                            <td>{{ balance.carryover|number_format(1, ",", ".") }}</td>
+                                            <td>
+                                                {% if balance.available > 10 %}
+                                                    <span class="badge bg-success">Gut</span>
+                                                {% elseif balance.available > 5 %}
+                                                    <span class="badge bg-warning">Mittel</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Kritisch</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-icon btn-info" onclick="viewEmployeeDetails({{ balance.user.id }})">
+                                                    <i class="ti ti-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="8" class="text-center text-muted py-4">
+                                                <i class="ti ti-users" style="font-size: 48px; opacity: 0.3;"></i>
+                                                <p class="mt-2">Keine Mitarbeiter gefunden.</p>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistik Cards -->
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="subheader">Gesamt Anspruch</div>
+                            </div>
+                            <div class="h1 mb-0">{{ stats.totalEntitlement|number_format(1, ",", ".") }}</div>
+                            <small class="text-muted">Tage ({{ stats.userCount }} Mitarbeiter)</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="subheader">Bereits genommen</div>
+                            <div class="h1 mb-0 text-orange">{{ stats.totalTaken|number_format(1, ",", ".") }}</div>
+                            <small class="text-muted">{{ stats.takenPercentage }}% des Anspruchs</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="subheader">Genehmigt/geplant</div>
+                            <div class="h1 mb-0 text-blue">{{ stats.totalApproved|number_format(1, ",", ".") }}</div>
+                            <small class="text-muted">Zukünftige Urlaube</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="subheader">Noch verfügbar</div>
+                            <div class="h1 mb-0 text-success">{{ stats.totalAvailable|number_format(1, ",", ".") }}</div>
+                            <small class="text-muted">{{ stats.availablePercentage }}% verfügbar</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Feiertage -->
+        <div class="tab-pane fade" id="holidays" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                                <i class="ti ti-star me-2"></i>
+                                Feiertage {{ currentYear }} (Liechtenstein)
+                            </h3>
+                            <div class="card-actions">
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addHolidayModal">
+                                    <i class="ti ti-plus me-1"></i>
+                                    Feiertag hinzufügen
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Feiertag</th>
+                                        <th>Wochentag</th>
+                                        <th>Typ</th>
+                                        <th>Status</th>
+                                        <th class="w-1">Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if holidays|length > 0 %}
+                                        {% for holiday in holidays %}
+                                        <tr>
+                                            <td>{{ holiday.date|date("d.m.Y") }}</td>
+                                            <td><strong>{{ holiday.name }}</strong></td>
+                                            <td>{{ holiday.date|date("l")|trans }}</td>
+                                            <td><span class="badge bg-red">{{ holiday.type }}</span></td>
+                                            <td>
+                                                {% if holiday.isActive %}
+                                                    <span class="badge bg-success">Aktiv</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inaktiv</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <form method="POST" action="{{ path("timeoff_admin_holiday_delete", {id: holiday.id}) }}" 
+                                                      onsubmit="return confirm('Feiertag wirklich löschen?');" style="display: inline;">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token("delete_holiday") }}">
+                                                    <button type="submit" class="btn btn-sm btn-icon btn-danger">
+                                                        <i class="ti ti-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                Keine Feiertage für {{ currentYear }} vorhanden.
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header bg-blue text-white">
+                            <h3 class="card-title mb-0">
+                                <i class="ti ti-calendar-check me-2"></i>
+                                Feiertagsübersicht {{ currentYear }}
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <strong>Gesamt:</strong>
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <span class="badge bg-red">{{ holidays|length }} Tage</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            
+                            <h6>Feiertage werden automatisch bei der Urlaubsberechnung berücksichtigt.</h6>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                                <i class="ti ti-download me-2"></i>
+                                Import/Export
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-success btn-sm w-100 mb-2" onclick="importHolidays()">
+                                <i class="ti ti-upload me-2"></i>
+                                Feiertage importieren
+                            </button>
+                            <button class="btn btn-primary btn-sm w-100" onclick="exportHolidays()">
+                                <i class="ti ti-download me-2"></i>
+                                Als iCal exportieren
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Berichte -->
+        <div class="tab-pane fade" id="reports" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                                <i class="ti ti-chart-bar me-2"></i>
+                                Auswertungen & Statistiken
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-file-type-pdf" style="font-size: 48px; color: #dc3545;"></i>
+                                            <h4 class="mt-3">Jahresbericht</h4>
+                                            <p class="text-muted">Vollständiger Urlaubsbericht für 2025</p>
+                                            <button class="btn btn-danger" onclick="generateReport('year')">
+                                                <i class="ti ti-file-type-pdf me-2"></i>PDF erstellen
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-file-spreadsheet" style="font-size: 48px; color: #28a745;"></i>
+                                            <h4 class="mt-3">Mitarbeiterliste</h4>
+                                            <p class="text-muted">Alle Salden als Excel-Tabelle</p>
+                                            <button class="btn btn-success" onclick="generateReport('excel')">
+                                                <i class="ti ti-file-spreadsheet me-2"></i>Excel erstellen
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-chart-line" style="font-size: 48px; color: #17a2b8;"></i>
+                                            <h4 class="mt-3">Urlaubsstatistik</h4>
+                                            <p class="text-muted">Grafische Auswertung</p>
+                                            <button class="btn btn-info" onclick="generateReport('stats')">
+                                                <i class="ti ti-chart-line me-2"></i>Anzeigen
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <h5 class="mb-3">Schnellstatistiken {{ currentYear }}:</h5>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <h3 class="text-primary">{{ stats.totalEntitlement|number_format(1, ",", ".") }}</h3>
+                                            <p class="text-muted mb-0">Gesamt Urlaubstage</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <h3 class="text-success">{{ stats.totalTaken|number_format(1, ",", ".") }}</h3>
+                                            <p class="text-muted mb-0">Genommene Tage</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <h3 class="text-warning">{{ stats.totalPending|number_format(1, ",", ".") }}</h3>
+                                            <p class="text-muted mb-0">Offene Anträge</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <h3 class="text-info">{{ stats.averagePerUser|number_format(1, ",", ".") }}</h3>
+                                            <p class="text-muted mb-0">Ø Tage/Mitarbeiter</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 5: Einstellungen -->
+        <div class="tab-pane fade" id="settings" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                                <i class="ti ti-tool me-2"></i>
+                                System-Einstellungen
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <form>
+                                <div class="mb-3">
+                                    <label class="form-label">Standard-Urlaubsanspruch</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" value="25" step="0.5">
+                                        <span class="input-group-text">Tage pro Jahr</span>
+                                    </div>
+                                    <small class="form-hint">Gilt für neue Mitarbeiter (Vollzeit)</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Maximaler Übertrag</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" value="5" step="0.5">
+                                        <span class="input-group-text">Tage</span>
+                                    </div>
+                                    <small class="form-hint">Max. Tage die ins nächste Jahr übertragen werden können</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Übertrag verfällt am</label>
+                                    <input type="date" class="form-control" value="2025-03-31">
+                                    <small class="form-hint">Stichtag für Verfall von Resturlaub</small>
+                                </div>
+
+                                <hr>
+
+                                <div class="mb-3">
+                                    <label class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" checked>							
+                                        <span class="form-check-label">E-Mail-Benachrichtigungen aktivieren</span>
+                                    </label>
+                                    <small class="form-hint">Mitarbeiter erhalten E-Mails bei Genehmigung/Ablehnung</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" checked>
+                                        <span class="form-check-label">Automatische Erinnerungen</span>
+                                    </label>
+                                    <small class="form-hint">Warnung bei drohendem Urlaubsverfall</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox">
+                                        <span class="form-check-label">Arztzeugnis-Pflicht bei Krankheit</span>
+                                    </label>
+                                    <small class="form-hint">Ab 3 Tagen Krankmeldung erforderlich</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" checked>
+                                        <span class="form-check-label">Feiertage automatisch berechnen</span>
+                                    </label>
+                                    <small class="form-hint">Feiertage werden bei Berechnung automatisch abgezogen</small>
+                                </div>
+
+                                <hr>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Minimum Vorlaufzeit für Urlaubsanträge</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" value="7">
+                                        <span class="input-group-text">Tage</span>
+                                    </div>
+                                    <small class="form-hint">Anträge müssen mind. X Tage im Voraus gestellt werden</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Maximum aufeinanderfolgende Urlaubstage</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" value="0" placeholder="0 = unbegrenzt">
+                                        <span class="input-group-text">Tage</span>
+                                    </div>
+                                    <small class="form-hint">0 = keine Begrenzung</small>
+                                </div>
+
+                                <hr>
+
+                                <h5>E-Mail-Vorlagen</h5>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Betreff bei Genehmigung</label>
+                                    <input type="text" class="form-control" value="✅ Ihr Urlaubsantrag wurde genehmigt">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Betreff bei Ablehnung</label>
+                                    <input type="text" class="form-control" value="❌ Ihr Urlaubsantrag wurde abgelehnt">
+                                </div>
+								<div class="mb-3">
+                                    <label class="form-label">CC-Empfänger (optional)</label>
+                                    <input type="email" class="form-control" placeholder="hr@firma.li">
+                                    <small class="form-hint">Alle Benachrichtigungen werden auch hierhin gesendet</small>
+                                </div>
+
+                                <hr>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary" onclick="return saveSettings()">
+                                        <i class="ti ti-device-floppy me-2"></i>
+                                        Einstellungen speichern
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="resetSettings()">
+                                        <i class="ti ti-refresh me-2"></i>
+                                        Zurücksetzen
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h3 class="card-title mb-0">
+                                <i class="ti ti-database me-2"></i>
+                                Datenbank-Aktionen
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <h6>Wartung & Verwaltung:</h6>
+                            
+                            <button class="btn btn-warning btn-sm w-100 mb-2" onclick="initializeYear()">
+                                <i class="ti ti-calendar-plus me-2"></i>
+                                Neues Jahr initialisieren
+                            </button>
+                            
+                            <button class="btn btn-primary btn-sm w-100 mb-2" onclick="recalculateBalances()">
+                                <i class="ti ti-calculator me-2"></i>
+                                Salden neu berechnen
+                            </button>
+                            
+                            <button class="btn btn-info btn-sm w-100 mb-2" onclick="exportData()">
+                                <i class="ti ti-download me-2"></i>
+                                Daten exportieren
+                            </button>
+                            
+                            <button class="btn btn-success btn-sm w-100 mb-2" onclick="importData()">
+                                <i class="ti ti-upload me-2"></i>
+                                Daten importieren
+                            </button>
+                            
+                            <hr>
+                            <h6 class="text-danger">Gefahrenzone:</h6>
+                            
+                            <button class="btn btn-danger btn-sm w-100" onclick="resetAllData()">
+                                <i class="ti ti-alert-triangle me-2"></i>
+                                Alle Daten löschen
+                            </button>
+                            
+                            <small class="text-muted d-block mt-2">
+                                ⚠️ Vorsicht: Diese Aktion kann nicht rückgängig gemacht werden!
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                            <div class="card-actions">
+                                <a href="{{ path("timeoff_admin_user_settings") }}" class="btn btn-info btn-sm">
+                                    <i class="ti ti-users-cog me-1"></i>
+                                    Mitarbeiter-Einstellungen
+                                </a>
+                            </div>
+                                <i class="ti ti-info-circle me-2"></i>
+                                Plugin-Info
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-6">Version:</dt>
+                                <dd class="col-6">1.0.0</dd>
+                                
+                                <dt class="col-6">Autor:</dt>
+                                <dd class="col-6">MMIND</dd>
+                                
+                                <dt class="col-6">Lizenz:</dt>
+                                <dd class="col-6">Proprietär</dd>
+                                
+                                <dt class="col-6">Installiert:</dt>
+                                <dd class="col-6">{{ "now"|date("d.m.Y") }}</dd>
+                            </dl>
+                            
+                            <hr>
+                            
+                            <a href="https://docs.kimai.org" class="btn btn-sm btn-outline-primary w-100" target="_blank">
+                                <i class="ti ti-book me-2"></i>
+                                Dokumentation
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal: Neue Policy -->
+<div class="modal fade" id="addPolicyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ path("timeoff_admin_policy_create") }}">
+                <input type="hidden" name="_token" value="{{ csrf_token("admin_policy") }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Neue Urlaubsrichtlinie</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label required">Name</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Beschreibung</label>
+                        <textarea name="description" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Jahresanspruch (Tage)</label>
+                            <input type="number" name="annual_days" class="form-control" step="0.5" value="25" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Max. Übertrag (Tage)</label>
+                            <input type="number" name="max_carryover" class="form-control" step="0.5" value="5" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-check">
+                            <input type="checkbox" name="is_default" class="form-check-input">
+                            <span class="form-check-label">Als Standard-Richtlinie setzen</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Policy bearbeiten -->
+<div class="modal fade" id="editPolicyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ path("timeoff_admin_policy_update") }}">
+                <input type="hidden" name="_token" value="{{ csrf_token("admin_policy") }}">
+                <input type="hidden" name="policy_id" id="editPolicyId">
+                <div class="modal-header">
+                    <h5 class="modal-title">Urlaubsrichtlinie bearbeiten</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label required">Name</label>
+                        <input type="text" name="name" id="editPolicyName" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Beschreibung</label>
+                        <textarea name="description" id="editPolicyDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Jahresanspruch (Tage)</label>
+                            <input type="number" name="annual_days" id="editPolicyAnnual" class="form-control" step="0.5" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Max. Übertrag (Tage)</label>
+                            <input type="number" name="max_carryover" id="editPolicyCarryover" class="form-control" step="0.5" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-check">
+                            <input type="checkbox" name="is_default" id="editPolicyDefault" class="form-check-input">
+                            <span class="form-check-label">Als Standard-Richtlinie setzen</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Neuer Feiertag -->
+<div class="modal fade" id="addHolidayModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ path("timeoff_admin_holiday_create") }}">
+                <input type="hidden" name="_token" value="{{ csrf_token("admin_holiday") }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Neuer Feiertag</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label required">Datum</label>
+                        <input type="date" name="date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label required">Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="z.B. Neujahr" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Typ</label>
+                        <select name="type" class="form-select">
+                            <option value="public">Gesetzlicher Feiertag</option>
+                            <option value="regional">Regionaler Feiertag</option>
+                            <option value="company">Betriebsfeiertag</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Policy-Funktionen
+function editPolicy(button) {
+    const id = button.dataset.policyId;
+    const name = button.dataset.policyName;
+    const description = button.dataset.policyDescription;
+    const annual = parseFloat(button.dataset.policyAnnual);
+    const carryover = parseFloat(button.dataset.policyCarryover);
+    const isDefault = button.dataset.policyDefault === "1";
+    
+    document.getElementById("editPolicyId").value = id;
+    document.getElementById("editPolicyName").value = name;
+    document.getElementById("editPolicyDescription").value = description || "";
+    document.getElementById("editPolicyAnnual").value = annual;
+    document.getElementById("editPolicyCarryover").value = carryover;
+    document.getElementById("editPolicyDefault").checked = isDefault;
+    
+    const modal = new bootstrap.Modal(document.getElementById("editPolicyModal"));
+    modal.show();
+}
+
+// Mitarbeiter-Funktionen
+function viewEmployeeDetails(id) {
+    alert("👤 Detailansicht für Mitarbeiter #" + id + "\n\n(Wird in zukünftiger Version mit Modal implementiert)");
+}
+
+function exportBalances() {
+    alert("📊 Salden werden als Excel exportiert...\n\n(Feature wird implementiert)");
+}
+
+function adjustBalance() {
+    const employee = prompt("Mitarbeiter-ID:");
+    if (employee) {
+        const amount = prompt("Anzahl Tage (positiv oder negativ):");
+        if (amount) {
+            alert("✅ Saldo angepasst: " + amount + " Tage");
+        }
+    }
+}
+
+// Feiertags-Funktionen
+function importHolidays() {
+    alert("📥 Feiertage importieren\n\n(CSV/iCal Import wird implementiert)");
+}
+
+function exportHolidays() {
+    alert("📅 Feiertage als iCal exportiert!\n\n(Wird in zukünftiger Version implementiert)");
+}
+
+// Berichts-Funktionen
+function generateReport(type) {
+    let message = "";
+    switch(type) {
+        case "year":
+            message = "📄 PDF-Jahresbericht wird erstellt...";
+            break;
+        case "excel":
+            message = "📊 Excel-Export wird vorbereitet...";
+            break;
+        case "stats":
+            message = "📈 Statistik-Dashboard wird geladen...";
+            break;
+    }
+    alert(message + "\n\n(Feature wird in zukünftiger Version implementiert)");
+}
+
+// Einstellungs-Funktionen
+function saveSettings() {
+    alert("💾 Einstellungen gespeichert!\n\n(In der finalen Version werden Einstellungen in der Datenbank gespeichert)");
+    return false;
+}
+
+function resetSettings() {
+    if (confirm("Möchten Sie alle Einstellungen auf die Standardwerte zurücksetzen?")) {
+        alert("🔄 Einstellungen zurückgesetzt!");
+    }
+}
+
+// Datenbank-Funktionen
+function initializeYear() {
+    if (confirm("Möchten Sie das Jahr 2026 initialisieren?\n\n- Neue Urlaubsansprüche werden erstellt\n- Übertrag aus 2025 wird berechnet")) {
+        alert("✅ Jahr 2026 wurde initialisiert!\n\n(In der finalen Version wird dies über einen Symfony Command gemacht)");
+    }
+}
+
+function recalculateBalances() {
+    if (confirm("Möchten Sie alle Urlaubssalden neu berechnen?\n\nDies kann einige Minuten dauern.")) {
+        alert("🔄 Neuberechnung gestartet...\n\n(In der finalen Version läuft dies im Hintergrund)");
+    }
+}
+
+function exportData() {
+    alert("💾 Daten-Export wird vorbereitet...\n\n(SQL/JSON Export wird implementiert)");
+}
+
+function importData() {
+    alert("📥 Daten-Import\n\n(CSV/JSON Import wird implementiert)");
+}
+
+function resetAllData() {
+    const confirmation = prompt("WARNUNG: Alle Urlaubsdaten werden gelöscht!\n\nGeben Sie 'LÖSCHEN' ein um fortzufahren:");
+    if (confirmation === "LÖSCHEN") {
+        alert("🗑️ Alle Daten wurden gelöscht!\n\n(In der finalen Version mit echtem DB-Reset)");
+    } else {
+        alert("❌ Abgebrochen - keine Daten wurden gelöscht.");
+    }
+}
+</script>
+{% endblock %}

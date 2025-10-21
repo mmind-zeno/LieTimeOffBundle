@@ -1,0 +1,3 @@
+controllers:
+    resource: "@LieTimeOffBundle/Controller/"
+    type: attribute

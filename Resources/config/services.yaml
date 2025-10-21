@@ -1,0 +1,35 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    # Alle Services auto-laden (außer Resources, Entity, Migrations)
+    KimaiPlugin\LieTimeOffBundle\:
+        resource: "../../"
+        exclude:
+            - "../../Resources/"
+            - "../../Controller/"
+            - "../../Entity/"
+            - "../../Migrations/"
+            - "../../Repository/"
+
+    # Controller explizit als public
+    KimaiPlugin\LieTimeOffBundle\Controller\:
+        resource: "../../Controller/*"
+        public: true
+        tags: ["controller.service_arguments"]
+
+    # EventSubscriber
+    KimaiPlugin\LieTimeOffBundle\EventSubscriber\MenuSubscriber: ~
+
+    # Services explizit (falls Autowiring Probleme macht)
+    KimaiPlugin\LieTimeOffBundle\Service\BalanceService:
+        arguments:
+            $em: '@doctrine.orm.entity_manager'
+            $settingsService: '@KimaiPlugin\LieTimeOffBundle\Service\SettingsService'
+    
+    # Settings Service
+    KimaiPlugin\LieTimeOffBundle\Service\SettingsService:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'

@@ -1,0 +1,206 @@
+{% extends "@theme/layout-horizontal.html.twig" %}
+
+{% block page_title %}Ferien & Krankheit (LI){% endblock %}
+
+{% block page_content %}
+<div class="container-xl">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-beach me-2"></i>
+                        Willkommen im Urlaubsmanagement
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        Verwalten Sie Ihre Urlaubstage und Krankmeldungen nach Liechtensteiner Recht.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="ti ti-calendar-check me-2"></i>
+                        Ihr Urlaubssaldo {{ currentYear }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if policy %}
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-7">
+                                    <strong>Jahresanspruch:</strong>
+                                </div>
+                                <div class="col-5 text-end">
+                                    <span class="badge bg-blue">{{ balance.annual|number_format(1, ",", ".") }} Tage</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-7">Genommen:</div>
+                                <div class="col-5 text-end">{{ balance.taken|number_format(1, ",", ".") }} Tage</div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-7">In Genehmigung:</div>
+                                <div class="col-5 text-end">
+                                    <span class="badge bg-orange">{{ balance.pending|number_format(1, ",", ".") }} Tage</span>
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-7">
+                                <strong>Verfügbar:</strong>
+                            </div>
+                            <div class="col-5 text-end">
+                                <strong class="text-success fs-4">{{ balance.available|number_format(1, ",", ".") }}</strong>
+                            </div>
+                        </div>
+
+                        {% if balance.available < 5 %}
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <i class="ti ti-alert-triangle me-2"></i>
+                            Ihr Urlaubsguthaben ist niedrig!
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-warning mb-0">
+                            <i class="ti ti-alert-triangle me-2"></i>
+                            Keine Urlaubsrichtlinie zugeordnet. Bitte kontaktieren Sie die Personalabteilung.
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <a href="{{ path("timeoff_request") }}" class="btn btn-primary w-100">
+                        <i class="ti ti-plus me-2"></i>
+                        Neuen Antrag stellen
+                    </a>
+                </div>
+            </div>
+
+            {% if myRequests|length > 0 %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-list me-2"></i>
+                        Meine letzten Anträge
+                    </h3>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for request in myRequests|slice(0, 5) %}
+                    <div class="list-group-item">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <div class="d-flex align-items-center">
+                                    {% if request.type == "vacation" %}
+                                        <span class="badge bg-blue me-2">Urlaub</span>
+                                    {% else %}
+                                        <span class="badge bg-red me-2">Krank</span>
+                                    {% endif %}
+                                    <div>
+                                        <strong>{{ request.startDate|date("d.m.Y") }} - {{ request.endDate|date("d.m.Y") }}</strong>
+                                        <div class="text-muted small">{{ request.days }} Tage</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                {% if request.status == "pending" %}
+                                    <span class="badge bg-orange">Ausstehend</span>
+                                {% elseif request.status == "approved" %}
+                                    <span class="badge bg-green">Genehmigt</span>
+                                {% elseif request.status == "rejected" %}
+                                    <span class="badge bg-red">Abgelehnt</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if myRequests|length > 5 %}
+                <div class="card-footer text-center">
+                    <small class="text-muted">{{ myRequests|length - 5 }} weitere Anträge...</small>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-star me-2"></i>
+                        Feiertage {{ currentYear }} (Liechtenstein)
+                    </h3>
+                </div>
+                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    {% if holidays|length > 0 %}
+                        <div class="list-group list-group-flush">
+                            {% for holiday in holidays %}
+                                {% set isPast = holiday.date < date() %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center {% if isPast %}opacity-50{% endif %}">
+                                    <div>
+                                        <strong>{{ holiday.date|date("d.m.Y") }}</strong>
+                                        <span class="ms-2">{{ holiday.name }}</span>
+                                    </div>
+                                    <span class="badge bg-red">{{ holiday.date|date("l")|trans }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="ti ti-info-circle me-2"></i>
+                            <strong>{{ holidays|length }} gesetzliche Feiertage</strong> werden bei der Urlaubsberechnung automatisch berücksichtigt.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning mb-0">
+                            <i class="ti ti-alert-triangle me-2"></i>
+                            Keine Feiertage für {{ currentYear }} gefunden. 
+                            Bitte führen Sie <code>bin/console timeoff:init</code> aus.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-gavel me-2"></i>
+                        Rechtliche Informationen (Liechtenstein)
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Urlaubsanspruch</h5>
+                            <ul>
+                                <li>Mindestens <strong>4 Wochen</strong> pro Jahr (20 Tage bei 5-Tage-Woche)</li>
+                                <li>Jugendliche bis 20 Jahre: <strong>5 Wochen</strong> (25 Tage)</li>
+                                <li>Arbeitnehmer ab 50 Jahren: <strong>5 Wochen</strong> (optional, je nach Vertrag)</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Urlaubsübertrag</h5>
+                            <ul>
+                                <li>Übertrag ins Folgejahr: Bis zu <strong>5 Tage</strong> möglich</li>
+                                <li>Verfall: Spätestens am <strong>31. März</strong> des Folgejahres</li>
+                                <li>Feiertage zählen <strong>nicht</strong> als Urlaubstage</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

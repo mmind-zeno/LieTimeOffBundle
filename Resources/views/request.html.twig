@@ -1,0 +1,101 @@
+{% extends "@theme/layout-horizontal.html.twig" %}
+
+{% block page_title %}Urlaubsantrag stellen{% endblock %}
+
+{% block page_content %}
+<div class="container-xl">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-calendar-plus me-2"></i>
+                        Neuen Urlaubsantrag stellen
+                    </h3>
+                </div>
+                <form method="POST" action="{{ path("timeoff_request") }}" id="leaveRequestForm">
+                    <input type="hidden" name="_token" value="{{ csrf_token("timeoff_request") }}">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label required">Art des Antrags</label>
+                            <select name="type" class="form-select" required>
+                                <option value="vacation">Urlaub</option>
+                                <option value="sickness">Krankheit</option>
+                            </select>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label required">Von (Datum)</label>
+                                <input type="date" name="start_date" id="startDate" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label required">Bis (Datum)</label>
+                                <input type="date" name="end_date" id="endDate" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Anzahl Arbeitstage</label>
+                            <input type="text" id="calculatedDays" class="form-control" readonly value="0">
+                            <small class="form-hint">Wochenenden und Feiertage werden automatisch ausgeschlossen.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Kommentar (optional)</label>
+                            <textarea name="comment" class="form-control" rows="3" placeholder="Zusätzliche Informationen..."></textarea>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="ti ti-info-circle me-2"></i>
+                            <strong>Hinweis:</strong> Ihr Antrag wird nach dem Absenden zur Genehmigung weitergeleitet.
+                        </div>
+                    </div>
+                    <div class="card-footer text-end">
+                        <a href="{{ path("timeoff_overview") }}" class="btn btn-secondary">
+                            <i class="ti ti-arrow-left me-2"></i>Abbrechen
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ti ti-send me-2"></i>Antrag einreichen
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const holidays = [
+    {% for holiday in holidays %}
+    "{{ holiday.date|date("Y-m-d") }}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+function calculateWorkingDays(start, end) {
+    if (!start || !end) return 0;
+    let count = 0;
+    let current = new Date(start);
+    const endDate = new Date(end);
+    while (current <= endDate) {
+        const dow = current.getDay();
+        const dateStr = current.toISOString().split("T")[0];
+        if (dow >= 1 && dow <= 5 && !holidays.includes(dateStr)) {
+            count++;
+        }
+        current.setDate(current.getDate() + 1);
+    }
+    return count;
+}
+
+function updateDays() {
+    const start = document.getElementById("startDate").value;
+    const end = document.getElementById("endDate").value;
+    const days = calculateWorkingDays(start, end);
+    document.getElementById("calculatedDays").value = days + " Tage";
+}
+
+document.getElementById("startDate").addEventListener("change", updateDays);
+document.getElementById("endDate").addEventListener("change", updateDays);
+</script>
+{% endblock %}

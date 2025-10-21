@@ -1,0 +1,233 @@
+{% extends "@theme/layout-horizontal.html.twig" %}
+
+{% block page_title %}Urlaubsanträge genehmigen{% endblock %}
+
+{% block page_content %}
+<div class="container-xl">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-orange text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="ti ti-clipboard-check me-2"></i>
+                        Offene Urlaubsanträge
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        Hier sehen Sie alle offenen Urlaubsanträge Ihrer Mitarbeiter.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if requests|length > 0 %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="ti ti-list me-2"></i>
+                        Antragsliste
+                    </h3>
+                    <div class="ms-auto">
+                        <span class="badge bg-orange badge-pill">{{ requests|length }} Offene Anträge</span>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>Mitarbeiter</th>
+                                <th>Art</th>
+                                <th>Von</th>
+                                <th>Bis</th>
+                                <th>Tage</th>
+                                <th>Status</th>
+                                <th>Eingereicht</th>
+                                <th class="w-1">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in requests %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar avatar-sm me-2">{{ request.user.username|slice(0, 2)|upper }}</span>
+                                        <div>
+                                            <strong>{{ request.user.displayName }}</strong>
+                                            <div class="text-muted small">{{ request.user.email }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if request.type == "vacation" %}
+                                        <span class="badge bg-blue">Urlaub</span>
+                                    {% else %}
+                                        <span class="badge bg-red">Krankheit</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ request.startDate|date("d.m.Y") }}</td>
+                                <td>{{ request.endDate|date("d.m.Y") }}</td>
+                                <td><strong>{{ request.days }}</strong></td>
+                                <td><span class="badge bg-orange">Ausstehend</span></td>
+                                <td>{{ request.createdAt|date("d.m.Y H:i") }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-success" 
+                                                onclick="approveRequest({{ request.id }})">
+                                            <i class="ti ti-check"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                onclick="rejectRequest({{ request.id }})">
+                                            <i class="ti ti-x"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-info" 
+                                                onclick="showDetails({{ request.id }})">
+                                            <i class="ti ti-info-circle"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% if request.comment %}
+                            <tr class="table-light">
+                                <td colspan="8" class="text-muted small">
+                                    <i class="ti ti-message me-1"></i>
+                                    <strong>Kommentar:</strong> {{ request.comment }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="ti ti-clipboard-check" style="font-size: 48px; color: #ccc;"></i>
+                    <h3 class="mt-3">Keine offenen Anträge</h3>
+                    <p class="text-muted">Aktuell gibt es keine Urlaubsanträge zur Genehmigung.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal: Details -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Antragsdetails</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsContent">
+                <!-- Wird per JS gefüllt -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Ablehnen -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ path("timeoff_approve") }}">
+                <input type="hidden" name="_token" value="{{ csrf_token("timeoff_approve") }}">
+                <input type="hidden" name="request_id" id="rejectRequestId">
+                <input type="hidden" name="action" value="reject">
+                <div class="modal-header">
+                    <h5 class="modal-title">Antrag ablehnen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Ablehnungsgrund (optional)</label>
+                        <textarea name="reason" class="form-control" rows="3" 
+                                  placeholder="Bitte begründen Sie die Ablehnung..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-danger">Ablehnen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function approveRequest(id) {
+    if (confirm("Möchten Sie diesen Antrag wirklich genehmigen?")) {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = "{{ path("timeoff_approve") }}";
+        
+        const token = document.createElement("input");
+        token.type = "hidden";
+        token.name = "_token";
+        token.value = "{{ csrf_token("timeoff_approve") }}";
+        
+        const requestId = document.createElement("input");
+        requestId.type = "hidden";
+        requestId.name = "request_id";
+        requestId.value = id;
+        
+        const action = document.createElement("input");
+        action.type = "hidden";
+        action.name = "action";
+        action.value = "approve";
+        
+        form.appendChild(token);
+        form.appendChild(requestId);
+        form.appendChild(action);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function rejectRequest(id) {
+    document.getElementById("rejectRequestId").value = id;
+    const modal = new bootstrap.Modal(document.getElementById("rejectModal"));
+    modal.show();
+}
+
+function showDetails(id) {
+    const details = {% if requests|length > 0 %}{{ requests|json_encode|raw }}{% else %}[]{% endif %};
+    const request = details.find(r => r.id === id);
+    
+    if (request) {
+        const content = `
+            <dl class="row">
+                <dt class="col-4">Mitarbeiter:</dt>
+                <dd class="col-8">${request.user.displayName}</dd>
+                <dt class="col-4">Art:</dt>
+                <dd class="col-8">${request.type === "vacation" ? "Urlaub" : "Krankheit"}</dd>
+                <dt class="col-4">Von:</dt>
+                <dd class="col-8">${new Date(request.startDate.date).toLocaleDateString("de-DE")}</dd>
+                <dt class="col-4">Bis:</dt>
+                <dd class="col-8">${new Date(request.endDate.date).toLocaleDateString("de-DE")}</dd>
+                <dt class="col-4">Tage:</dt>
+                <dd class="col-8"><strong>${request.days}</strong></dd>
+                <dt class="col-4">Eingereicht:</dt>
+                <dd class="col-8">${new Date(request.createdAt.date).toLocaleString("de-DE")}</dd>
+                ${request.comment ? `<dt class="col-4">Kommentar:</dt><dd class="col-8">${request.comment}</dd>` : ""}
+            </dl>
+        `;
+        document.getElementById("detailsContent").innerHTML = content;
+        const modal = new bootstrap.Modal(document.getElementById("detailsModal"));
+        modal.show();
+    }
+}
+</script>
+{% endblock %}

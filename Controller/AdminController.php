@@ -1,0 +1,375 @@
+<?php
+declare(strict_types=1);
+
+namespace KimaiPlugin\LieTimeOffBundle\Controller;
+
+use Doctrine\ORM\EntityManagerInterface;
+use KimaiPlugin\LieTimeOffBundle\Entity\Holiday;
+use KimaiPlugin\LieTimeOffBundle\Entity\LeavePolicy;
+use KimaiPlugin\LieTimeOffBundle\Entity\UserLeaveSettings;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+
+#[Route(path: "/timeoff/admin")]
+#[IsGranted("ROLE_ADMIN")]
+final class AdminController extends AbstractController
+{
+    private const TOKEN_POLICY = "admin_policy";
+    private const TOKEN_HOLIDAY = "admin_holiday";
+
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private \KimaiPlugin\LieTimeOffBundle\Service\SettingsService $settingsService
+    ) {
+    }
+
+    #[Route(path: "/policy/create", name: "timeoff_admin_policy_create", methods: ["POST"])]
+    public function createPolicy(Request $request): Response
+    {
+        try {
+            $token = (string) $request->request->get("_token", "");
+            if (!$this->isCsrfTokenValid(self::TOKEN_POLICY, $token)) {
+                $this->addFlash("error", "Sicherheits-Token ungültig.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            $name = (string) $request->request->get("name");
+            $description = (string) $request->request->get("description", "");
+            $annualDays = (float) $request->request->get("annual_days");
+            $maxCarryover = (float) $request->request->get("max_carryover");
+            $isDefault = (bool) $request->request->get("is_default");
+
+            if (!$name || $annualDays <= 0) {
+                $this->addFlash("error", "Bitte füllen Sie alle Pflichtfelder aus.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            if ($isDefault) {
+                $this->entityManager->createQueryBuilder()
+                    ->update(LeavePolicy::class, "p")
+                    ->set("p.isDefault", "false")
+                    ->getQuery()
+                    ->execute();
+            }
+
+            $policy = new LeavePolicy();
+            $policy->setName($name);
+            $policy->setDescription($description);
+            $policy->setAnnualDays($annualDays);
+            $policy->setMaxCarryover($maxCarryover);
+            $policy->setIsDefault($isDefault);
+            $policy->setIsActive(true);
+
+            $this->entityManager->persist($policy);
+            $this->entityManager->flush();
+
+            $this->addFlash("success", "Urlaubsrichtlinie wurde erfolgreich erstellt.");
+            return $this->redirectToRoute("timeoff_admin");
+
+        } catch (\Throwable $e) {
+            $this->addFlash("error", "Fehler: " . $e->getMessage());
+            return $this->redirectToRoute("timeoff_admin");
+        }
+    }
+
+    #[Route(path: "/policy/update", name: "timeoff_admin_policy_update", methods: ["POST"])]
+    public function updatePolicy(Request $request): Response
+    {
+        try {
+            $token = (string) $request->request->get("_token", "");
+            if (!$this->isCsrfTokenValid(self::TOKEN_POLICY, $token)) {
+                $this->addFlash("error", "Sicherheits-Token ungültig.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            $policyId = (int) $request->request->get("policy_id");
+            $name = (string) $request->request->get("name");
+            $description = (string) $request->request->get("description", "");
+            $annualDays = (float) $request->request->get("annual_days");
+            $maxCarryover = (float) $request->request->get("max_carryover");
+            $isDefault = (bool) $request->request->get("is_default");
+
+            $policy = $this->entityManager->find(LeavePolicy::class, $policyId);
+            
+            if (!$policy) {
+                $this->addFlash("error", "Richtlinie nicht gefunden.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            if (!$name || $annualDays <= 0) {
+                $this->addFlash("error", "Bitte füllen Sie alle Pflichtfelder aus.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            if ($isDefault && !$policy->isDefault()) {
+                $this->entityManager->createQueryBuilder()
+                    ->update(LeavePolicy::class, "p")
+                    ->set("p.isDefault", "false")
+                    ->getQuery()
+                    ->execute();
+            }
+
+            $policy->setName($name);
+            $policy->setDescription($description);
+            $policy->setAnnualDays($annualDays);
+            $policy->setMaxCarryover($maxCarryover);
+            $policy->setIsDefault($isDefault);
+
+            $this->entityManager->flush();
+
+            $this->addFlash("success", "Urlaubsrichtlinie wurde erfolgreich aktualisiert.");
+            return $this->redirectToRoute("timeoff_admin");
+
+        } catch (\Throwable $e) {
+            $this->addFlash("error", "Fehler: " . $e->getMessage());
+            return $this->redirectToRoute("timeoff_admin");
+        }
+    }
+
+    #[Route(path: "/holiday/create", name: "timeoff_admin_holiday_create", methods: ["POST"])]
+    public function createHoliday(Request $request): Response
+    {
+        try {
+            $token = (string) $request->request->get("_token", "");
+            if (!$this->isCsrfTokenValid(self::TOKEN_HOLIDAY, $token)) {
+                $this->addFlash("error", "Sicherheits-Token ungültig.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            $dateStr = (string) $request->request->get("date");
+            $name = (string) $request->request->get("name");
+            $type = (string) $request->request->get("type", "public");
+
+            if (!$dateStr || !$name) {
+                $this->addFlash("error", "Bitte füllen Sie alle Pflichtfelder aus.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            $date = new \DateTimeImmutable($dateStr);
+
+            $existing = $this->entityManager->getRepository(Holiday::class)
+                ->findOneBy(["date" => $date]);
+
+            if ($existing) {
+                $this->addFlash("error", "Für dieses Datum existiert bereits ein Feiertag.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            $holiday = new Holiday();
+            $holiday->setDate($date);
+            $holiday->setName($name);
+            $holiday->setType($type);
+            $holiday->setIsActive(true);
+
+            $this->entityManager->persist($holiday);
+            $this->entityManager->flush();
+
+            $this->addFlash("success", "Feiertag wurde erfolgreich erstellt.");
+            return $this->redirectToRoute("timeoff_admin");
+
+        } catch (\Throwable $e) {
+            $this->addFlash("error", "Fehler: " . $e->getMessage());
+            return $this->redirectToRoute("timeoff_admin");
+        }
+    }
+
+    #[Route(path: "/holiday/{id}/delete", name: "timeoff_admin_holiday_delete", methods: ["POST"])]
+    public function deleteHoliday(int $id, Request $request): Response
+    {
+        try {
+            $token = (string) $request->request->get("_token", "");
+            if (!$this->isCsrfTokenValid("delete_holiday", $token)) {
+                $this->addFlash("error", "Sicherheits-Token ungültig.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            $holiday = $this->entityManager->find(Holiday::class, $id);
+            
+            if (!$holiday) {
+                $this->addFlash("error", "Feiertag nicht gefunden.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            $this->entityManager->remove($holiday);
+            $this->entityManager->flush();
+
+            $this->addFlash("success", "Feiertag wurde erfolgreich gelöscht.");
+            return $this->redirectToRoute("timeoff_admin");
+
+        } catch (\Throwable $e) {
+            $this->addFlash("error", "Fehler: " . $e->getMessage());
+            return $this->redirectToRoute("timeoff_admin");
+        }
+    }
+
+    /**
+     * Zeigt User-Settings für Employment Types
+     */
+    #[Route(path: "/user-settings", name: "timeoff_admin_user_settings", methods: ["GET"])]
+    public function userSettings(): Response
+    {
+        $users = $this->entityManager->getRepository(\App\Entity\User::class)
+            ->findBy(["enabled" => true], ["alias" => "ASC"]);
+        
+        $policies = $this->entityManager->getRepository(LeavePolicy::class)
+            ->findBy(["isActive" => true]);
+        
+        $allSettings = $this->entityManager->getRepository(UserLeaveSettings::class)
+            ->findAll();
+        
+        $settingsByUser = [];
+        foreach ($allSettings as $setting) {
+            $settingsByUser[$setting->getUser()->getId()] = $setting;
+        }
+        
+        return $this->render("@LieTimeOffBundle/user_settings.html.twig", [
+            "users" => $users,
+            "policies" => $policies,
+            "settingsByUser" => $settingsByUser,
+            "currentYear" => (int) date("Y"),
+        ]);
+    }
+
+    /**
+     * Speichert User-Settings mit Validierung
+     */
+    #[Route(path: "/user-settings/save", name: "timeoff_admin_user_settings_save", methods: ["POST"])]
+    public function saveUserSettings(Request $request): Response
+    {
+        try {
+            // CSRF-Prüfung
+            $token = (string) $request->request->get("_token", "");
+            if (!$this->isCsrfTokenValid("user_settings", $token)) {
+                $this->addFlash("error", "Sicherheits-Token ungültig.");
+                return $this->redirectToRoute("timeoff_admin_user_settings");
+            }
+
+            $userId = (int) $request->request->get("user_id");
+            $user = $this->entityManager->getRepository(\App\Entity\User::class)->find($userId);
+            
+            if (!$user) {
+                $this->addFlash("error", "Benutzer nicht gefunden.");
+                return $this->redirectToRoute("timeoff_admin_user_settings");
+            }
+
+            // Employment Type validieren
+            $employmentType = (string) $request->request->get("employment_type", UserLeaveSettings::TYPE_FULLTIME);
+            $validTypes = [
+                UserLeaveSettings::TYPE_FULLTIME,
+                UserLeaveSettings::TYPE_PARTTIME,
+                UserLeaveSettings::TYPE_HOURLY
+            ];
+            
+            if (!in_array($employmentType, $validTypes, true)) {
+                $this->addFlash("error", "Ungültiger Employment Type.");
+                return $this->redirectToRoute("timeoff_admin_user_settings");
+            }
+
+            // Prozentsatz validieren
+            $percentage = (float) $request->request->get("working_time_percentage", 100.0);
+            if ($employmentType === UserLeaveSettings::TYPE_PARTTIME) {
+                if ($percentage <= 0.0 || $percentage > 100.0) {
+                    $this->addFlash("error", "Prozentsatz muss zwischen 1 und 100 liegen.");
+                    return $this->redirectToRoute("timeoff_admin_user_settings");
+                }
+            }
+
+            // Kimai-Tracking
+            $useKimaiTracking = $request->request->has("use_kimai_tracking");
+
+            // Policy validieren
+            $policyId = $request->request->get("policy_id");
+            $policy = null;
+            if ($policyId) {
+                $policy = $this->entityManager->getRepository(LeavePolicy::class)->find((int) $policyId);
+                if (!$policy) {
+                    $this->addFlash("error", "Policy nicht gefunden.");
+                    return $this->redirectToRoute("timeoff_admin_user_settings");
+                }
+            }
+
+            // Settings laden oder erstellen
+            $settings = $this->entityManager->getRepository(UserLeaveSettings::class)
+                ->findOneBy(["user" => $user]);
+            
+            if (!$settings) {
+                $settings = new UserLeaveSettings();
+                $settings->setUser($user);
+            }
+
+            $settings->setEmploymentType($employmentType);
+            $settings->setWorkingTimePercentage($percentage);
+            $settings->setUseKimaiTimeTracking($useKimaiTracking);
+            $settings->setPolicy($policy);
+            $settings->setUpdatedAt(new \DateTimeImmutable());
+
+            $this->entityManager->persist($settings);
+            $this->entityManager->flush();
+
+            $this->addFlash("success", sprintf("Einstellungen für %s wurden gespeichert.", $user->getDisplayName()));
+            
+            return $this->redirectToRoute("timeoff_admin_user_settings");
+
+        } catch (\Throwable $e) {
+            $this->addFlash("error", "Fehler: " . $e->getMessage());
+            return $this->redirectToRoute("timeoff_admin_user_settings");
+        }
+    }
+	
+	/**
+     * Speichert System-Einstellungen
+     */
+    #[Route(path: "/settings/save", name: "timeoff_admin_settings_save", methods: ["POST"])]
+    public function saveSettings(Request $request): Response
+    {
+        try {
+            $token = (string) $request->request->get("_token", "");
+            if (!$this->isCsrfTokenValid("admin_settings", $token)) {
+                $this->addFlash("error", "Sicherheits-Token ungültig.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            //$settingsService = $this->container->get(\KimaiPlugin\LieTimeOffBundle\Service\SettingsService::class);
+
+            // Alle Settings sammeln
+            $settings = [
+                "default_annual_days" => (float) $request->request->get("default_annual_days", 25.0),
+                "max_carryover_days" => (float) $request->request->get("max_carryover_days", 5.0),
+                "carryover_expiry_date" => (string) $request->request->get("carryover_expiry_date", "03-31"),
+                "email_notifications" => $request->request->has("email_notifications"),
+                "auto_reminders" => $request->request->has("auto_reminders"),
+                "sick_certificate_required" => $request->request->has("sick_certificate_required"),
+                "auto_calculate_holidays" => $request->request->has("auto_calculate_holidays"),
+                "min_advance_days" => (int) $request->request->get("min_advance_days", 7),
+                "max_consecutive_days" => (int) $request->request->get("max_consecutive_days", 0),
+                "email_subject_approved" => (string) $request->request->get("email_subject_approved", "✅ Ihr Urlaubsantrag wurde genehmigt"),
+                "email_subject_rejected" => (string) $request->request->get("email_subject_rejected", "❌ Ihr Urlaubsantrag wurde abgelehnt"),
+                "email_cc_recipient" => (string) $request->request->get("email_cc_recipient", ""),
+            ];
+
+            // Validierung
+            if ($settings["default_annual_days"] < 0 || $settings["default_annual_days"] > 50) {
+                $this->addFlash("error", "Standard-Urlaubsanspruch muss zwischen 0 und 50 Tagen liegen.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            if ($settings["max_carryover_days"] < 0 || $settings["max_carryover_days"] > 30) {
+                $this->addFlash("error", "Maximaler Übertrag muss zwischen 0 und 30 Tagen liegen.");
+                return $this->redirectToRoute("timeoff_admin");
+            }
+
+            // Speichern
+            $this->settingsService->setMultiple($settings);
+
+            $this->addFlash("success", "Einstellungen wurden erfolgreich gespeichert.");
+            return $this->redirectToRoute("timeoff_admin");
+
+        } catch (\Throwable $e) {
+            $this->addFlash("error", "Fehler beim Speichern: " . $e->getMessage());
+            return $this->redirectToRoute("timeoff_admin");
+        }
+    }
+}
