@@ -2,8 +2,14 @@
   "name": "kimai/li-time-off-bundle",
   "description": "Vacation, sickness & public holidays for Liechtenstein",
   "type": "kimai-plugin",
-  "license": "MIT",
-  "version": "1.0.0",
+  "version": "0.90.0",  
+  "authors": [
+      {
+          "name": "Zeno John",
+          "homepage": "https://mmind.ai"
+      }
+  ],
+  "license": "proprietary",
   "require": {
     "kimai/kimai2-composer": "^2.0"
   },
@@ -12,11 +18,10 @@
       "KimaiPlugin\\LieTimeOffBundle\\": ""
     }
   },
-  "extra": {
-    "kimai": {
-      "require": 23800,
-      "version": "1.0.0",
-      "name": "LieTimeOffBundle"
+    "extra": {
+        "kimai": {
+            "require": 23600,
+            "name": "Lie Time Off Bundle"
+        }
     }
-  }
 }

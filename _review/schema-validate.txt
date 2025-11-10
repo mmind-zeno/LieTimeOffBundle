@@ -1,0 +1,10 @@
+
+Mapping
+-------
+
+ [OK] The mapping files are correct.                                                                                    
+
+Database
+--------
+
+ [SKIPPED] The database was not checked for synchronicity.
